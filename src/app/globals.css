@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 33, 37, 41;
+  --background-start-rgb: 248, 249, 250;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 248, 249, 250;
+    --background-start-rgb: 33, 37, 41;
+    --background-end-rgb: 33, 37, 41;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* 卡通化按钮样式 */
+.cartoon-button {
+  @apply relative px-6 py-3 font-bold text-white rounded-full transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg;
+  background: linear-gradient(145deg, #FF6B6B, #FF8E53);
+}
+
+.cartoon-button::after {
+  content: '';
+  @apply absolute -bottom-2 left-0 right-0 h-1 bg-black/20 rounded-full;
+}
+
+/* 积分显示样式 */
+.points-display {
+  @apply flex items-center px-4 py-2 rounded-xl bg-white/90 shadow-md border-2 border-dashed;
+}
+
+.points-coin {
+  @apply border-yellow-400;
+}
+
+.points-diamond {
+  @apply border-blue-400;
+}
+
+.points-energy {
+  @apply border-orange-400;
+}
