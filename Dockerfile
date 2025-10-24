@@ -29,11 +29,11 @@ COPY --from=builder /app/node_modules ./node_modules
 # 复制数据库初始化脚本
 COPY --from=builder /app/src/lib/init-database.js ./src/lib/init-database.js
 
-# 创建数据库目录
-RUN mkdir -p /app/db && chown -R node:node /app/db
+# 创建数据库目录并设置适当的权限
+RUN mkdir -p /app/db && chown -R node:node /app/db && chmod -R 775 /app/db
 
-# 切换到非root用户
-USER node
+# 保持使用root用户以避免权限问题
+# USER node
 
 # 暴露应用端口
 EXPOSE 3000

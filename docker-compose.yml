@@ -8,7 +8,6 @@ services:
       - DB_PATH=/app/db/database.db
     volumes:
       - ./db:/app/db
-    user: "node"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
