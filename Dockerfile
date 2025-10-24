@@ -12,18 +12,20 @@ COPY package*.json ./
 
 # 优化npm配置
 RUN npm config set progress=true && \
-    npm config set loglevel=http
+    npm config set loglevel=http && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000
 
 # 安装依赖（使用--legacy-peer-deps避免peer dependency冲突）
 RUN echo "开始安装依赖..." && \
-    npm install --legacy-peer-deps --verbose
+    npm install --legacy-peer-deps --ignore-scripts
 
 # 复制源代码
 COPY . .
 
-# 构建应用（增加详细输出）
+# 构建应用
 RUN echo "开始构建应用..." && \
-    npm run build --verbose
+    npm run build
 
 # 生产阶段
 FROM node:20-alpine

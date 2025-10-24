@@ -14,7 +14,11 @@ echo -e "${GREEN}===== 开始部署 Kid Growth 应用 =====${NC}"
 # 检查Docker是否正在运行
 echo -e "${YELLOW}检查Docker状态...${NC}"
 if ! docker info > /dev/null 2>&1; then
-    echo -e "${RED}错误: Docker 守护进程未运行，请先启动Docker${NC}"
+    echo -e "${RED}错误: Docker 守护进程未运行${NC}"
+    echo -e "${YELLOW}请按照以下步骤操作:${NC}"
+    echo -e "1. 在Mac上，打开Docker Desktop应用"
+    echo -e "2. 在Linux上，运行: sudo systemctl start docker"
+    echo -e "3. 等待Docker启动完成后，再次运行此脚本"
     exit 1
 fi
 
