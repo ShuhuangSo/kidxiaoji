@@ -5,26 +5,44 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - DB_PATH=/app/db/database.db
-      - NEXT_TELEMETRY_DISABLED=1
-      - SKIP_TYPE_CHECK=true
-      - NEXT_DISABLE_ESLINT=true
+      - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
     volumes:
       - ./db:/app/db
+      - ./public/avatars:/app/public/avatars
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
-    command: sh -c "node src/lib/init-database.js && npm start"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        # 检查数据库文件是否存在，不存在则初始化
+        if [ ! -f "/app/db/database.db" ]; then
+          echo "初始化数据库..."
+          sqlite3 /app/db/database.db < /app/db/init-database.sql
+          echo "数据库初始化完成"
+        else
+          echo "数据库文件已存在，跳过初始化"
+        fi
+        # 启动应用
+        npm start
 
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./public/avatars:/usr/share/nginx/html/avatars:ro
     depends_on:
       - app
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

@@ -1,5 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 // 类型定义
 export interface User {
@@ -72,8 +74,8 @@ export interface Redemption {
 }
 
 // 数据库文件路径
-// 优先从环境变量读取，如果不存在则使用默认路径
-const DB_PATH = process.env.DB_PATH || './db/database.db';
+const DB_PATH = './database.db';
+const INIT_SQL_PATH = process.env.DATABASE_INIT_SCRIPT || join(__dirname, '../../db/init-database.sql');
 
 // 初始化数据库连接和表结构
 export async function initDatabase() {
@@ -81,94 +83,101 @@ export async function initDatabase() {
     filename: DB_PATH,
     driver: sqlite3.Database
   });
-  await createTables(db);
-  await initializeData(db);
-  await initializeSystemSettings(db);
+  
+  try {
+    // 尝试使用SQL脚本初始化数据库
+    console.log(`尝试从脚本初始化数据库: ${INIT_SQL_PATH}`);
+    
+    // 检查SQL脚本文件是否存在
+    try {
+        const sqlScript = readFileSync(INIT_SQL_PATH, 'utf8');
+        // 执行SQL脚本
+        await db.exec(sqlScript);
+        console.log('数据库脚本执行成功');
+      } catch (sqlError) {
+        console.warn('SQL脚本执行失败或不存在，使用备用初始化方法:', (sqlError as Error).message);
+        // 如果脚本执行失败，使用原来的方法初始化
+        await createTables(db);
+        await initializeData(db);
+        await initializeSystemSettings(db);
+      }
+  } catch (error) {
+      console.error('数据库初始化失败:', (error as Error).message);
+      throw error;
+    }
+  
   return db;
 }
 
 // 创建数据库表结构
 async function createTables(database?: any) {
-  console.log('开始创建数据库表结构...');
+  if (!database) {
+    database = await initDatabase();
+  }
   
-  try {
-    if (!database) {
-      console.log('数据库实例不存在，初始化中...');
-      database = await initDatabase();
-    }
-    
-    // 创建用户表
-    console.log('创建users表...');
-    await database.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('child', 'parent')),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        avatar TEXT
-      );
-    `);
-    console.log('users表创建成功');
-    
-    // 创建积分表
-    console.log('创建points表...');
-    await database.run(`
-      CREATE TABLE IF NOT EXISTS points (
-        user_id INTEGER PRIMARY KEY,
-        coins INTEGER DEFAULT 0,
-        diamonds INTEGER DEFAULT 0,
-        energy INTEGER DEFAULT 0,
-        level INTEGER DEFAULT 1,
-        streak_days INTEGER DEFAULT 0,
-        last_streak_date TIMESTAMP,
-        consecutive_missed_days INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `);
-    console.log('points表创建成功');
+  // 创建用户表
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('child', 'parent')),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      avatar TEXT
+    );
+  `);
+  
+  // 创建积分表
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS points (
+      user_id INTEGER PRIMARY KEY,
+      coins INTEGER DEFAULT 0,
+      diamonds INTEGER DEFAULT 0,
+      energy INTEGER DEFAULT 0,
+      level INTEGER DEFAULT 1,
+      streak_days INTEGER DEFAULT 0,
+      last_streak_date TIMESTAMP,
+      consecutive_missed_days INTEGER DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
   
   // 创建任务表
-    console.log('创建tasks表...');
-    await database.run(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        reward_type TEXT NOT NULL CHECK(reward_type IN ('coin', 'diamond')),
-        reward_amount INTEGER NOT NULL,
-        is_daily BOOLEAN DEFAULT true,
-        recurrence TEXT NOT NULL CHECK(recurrence IN ('none', 'daily', 'weekly', 'monthly')) DEFAULT 'none',
-        expiry_time TIMESTAMP,
-        target_user_id INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
-      );
-    `);
-    console.log('tasks表创建成功');
-
-    // 创建用户任务关联表
-    console.log('创建user_tasks表...');
-    await database.run(`
-      CREATE TABLE IF NOT EXISTS user_tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        task_id INTEGER NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'missed')),
-        completed_at TIMESTAMP,
-        assigned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        needs_approval BOOLEAN DEFAULT true,
-        approval_status TEXT DEFAULT 'pending' CHECK(approval_status IN ('pending', 'approved', 'rejected')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-        UNIQUE(user_id, task_id, assigned_date)
-      );
-    `);
-    console.log('user_tasks表创建成功');
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      reward_type TEXT NOT NULL CHECK(reward_type IN ('coin', 'diamond')),
+      reward_amount INTEGER NOT NULL,
+      is_daily BOOLEAN DEFAULT true,
+      recurrence TEXT NOT NULL CHECK(recurrence IN ('none', 'daily', 'weekly', 'monthly')) DEFAULT 'none',
+      expiry_time TIMESTAMP,
+      target_user_id INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
+  
+  // 创建用户任务关联表
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS user_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_id INTEGER NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'missed')),
+      completed_at TIMESTAMP,
+      assigned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      needs_approval BOOLEAN DEFAULT true,
+      approval_status TEXT DEFAULT 'pending' CHECK(approval_status IN ('pending', 'approved', 'rejected')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+      UNIQUE(user_id, task_id, assigned_date)
+    );
+  `);
   
   // 创建奖励商店表
-  console.log('创建rewards表...');
   await database.run(`
     CREATE TABLE IF NOT EXISTS rewards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,10 +190,8 @@ async function createTables(database?: any) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  console.log('rewards表创建成功');
   
   // 创建用户兑换记录表
-  console.log('创建redemptions表...');
   await database.run(`
     CREATE TABLE IF NOT EXISTS redemptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,10 +203,8 @@ async function createTables(database?: any) {
       FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE CASCADE
     );
   `);
-  console.log('redemptions表创建成功');
 
   // 创建用户奖励通知表
-  console.log('创建user_reward_notifications表...');
   await database.run(`
     CREATE TABLE IF NOT EXISTS user_reward_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,10 +222,8 @@ async function createTables(database?: any) {
       FOREIGN KEY (product_id) REFERENCES rewards(id) ON DELETE SET NULL
     );
   `);
-  console.log('user_reward_notifications表创建成功');
 
   // 创建积分变动历史表
-  console.log('创建point_history表...');
   await database.run(`
     CREATE TABLE IF NOT EXISTS point_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,13 +238,6 @@ async function createTables(database?: any) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
-  console.log('point_history表创建成功');
-  console.log('所有数据库表创建完成');
-} catch (error) {
-  console.error('创建数据库表时出错:', error);
-  // 继续抛出错误，让上层函数处理
-  throw error;
-}
 }
 
 // 初始化默认数据
@@ -377,18 +373,11 @@ async function initializeSystemSettings(database?: any) {
   }
 }
 
-// 获取数据库实例 - 每次返回新的连接并确保表结构已初始化
+// 获取数据库实例 - 每次返回新的连接
 export async function getDatabase() {
-  console.log('获取数据库连接...');
   const db = await open({
     filename: DB_PATH,
     driver: sqlite3.Database
   });
-  
-  console.log('数据库连接获取成功，准备创建表结构...');
-  // 确保表结构已创建
-  await createTables(db);
-  
-  console.log('数据库表结构检查完成');
   return db;
 }
