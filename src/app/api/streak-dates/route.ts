@@ -15,8 +15,7 @@ function getBeijingDateString(date: Date): string {
 
 // 辅助函数：获取数据库连接
 async function getDbConnection() {
-  // 使用与db.ts中相同的数据库路径配置
-  const dbPath = process.env.DATABASE_PATH || '/app/db/database.db';
+  const dbPath = join(process.cwd(), 'database.db');
   console.log(`数据库路径: ${dbPath}`);
   
   return await open({

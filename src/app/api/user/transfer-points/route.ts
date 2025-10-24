@@ -2,12 +2,10 @@ import { NextResponse } from 'next/server';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 
-// 使用与db.ts中相同的数据库路径配置
+// 直接使用sqlite模块连接数据库
 async function getDb() {
-  const dbPath = process.env.DATABASE_PATH || '/app/db/database.db';
-  console.log(`transfer-points数据库路径: ${dbPath}`);
   return await open({
-    filename: dbPath,
+    filename: './database.db',
     driver: sqlite3.Database
   });
 }

@@ -5,7 +5,6 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - DATABASE_PATH=/app/db/database.db
       - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
     volumes:
       - ./db:/app/db
@@ -20,10 +19,6 @@ services:
       - sh
       - -c
       - |
-        # 确保数据库目录存在并设置正确权限
-        echo "确保数据库目录存在..."
-        mkdir -p /app/db
-        
         # 检查数据库文件是否存在，不存在则初始化
         if [ ! -f "/app/db/database.db" ]; then
           echo "初始化数据库..."
@@ -32,9 +27,7 @@ services:
         else
           echo "数据库文件已存在，跳过初始化"
         fi
-        
         # 启动应用
-        echo "启动应用..."
         npm start
 
   nginx:
