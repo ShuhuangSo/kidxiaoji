@@ -40,6 +40,7 @@ EXPOSE 3000
 
 # 设置环境变量
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # 启动命令 - 先初始化数据库，再启动应用
 CMD node /app/src/lib/init-database.js && npm start
