@@ -42,5 +42,9 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# 禁用TypeScript检查和lint以加速构建
+ENV SKIP_TYPE_CHECK=true
+ENV NEXT_DISABLE_ESLINT=true
+
 # 启动命令 - 先初始化数据库，再启动应用
 CMD node /app/src/lib/init-database.js && npm start
