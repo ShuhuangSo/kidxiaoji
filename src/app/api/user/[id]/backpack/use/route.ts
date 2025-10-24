@@ -6,8 +6,10 @@ import { getMultiplierEffectDurationHours, getMultiplierEffectDuration } from '@
 
 // 打开数据库连接
 async function getDatabase() {
+  const dbPath = process.env.DATABASE_PATH || '/app/db/database.db';
+  console.log(`backpack/use数据库路径: ${dbPath}`);
   return open({
-    filename: './database.db',
+    filename: dbPath,
     driver: sqlite3.Database
   });
 }

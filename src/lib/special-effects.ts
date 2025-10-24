@@ -38,9 +38,12 @@ export interface ActiveMultiplier {
  * 打开数据库连接
  */
 async function getDatabase() {
-  // 使用正确的数据库路径，项目中可能使用多个数据库文件
+  // 使用与db.ts中相同的数据库路径配置
+  const dbPath = process.env.DATABASE_PATH || '/app/db/database.db';
+  console.log(`special-effects数据库路径: ${dbPath}`);
+  
   return open({
-    filename: './db/database.db',
+    filename: dbPath,
     driver: sqlite3.Database
   });
 }
