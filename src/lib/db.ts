@@ -72,7 +72,8 @@ export interface Redemption {
 }
 
 // 数据库文件路径
-const DB_PATH = './db/database.db';
+// 优先从环境变量读取，如果不存在则使用默认路径
+const DB_PATH = process.env.DB_PATH || './db/database.db';
 
 // 初始化数据库连接和表结构
 export async function initDatabase() {
