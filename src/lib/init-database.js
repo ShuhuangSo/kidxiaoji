@@ -1,98 +1,14 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+// 数据库初始化脚本
+// 用于在应用启动时初始化数据库结构和默认数据
 
-// 类型定义
-export interface User {
-  id: number;
-  username: string;
-  password_hash: string;
-  role: 'child' | 'parent';
-  created_at: Date;
-  avatar?: string; // 头像URL或文件路径
-}
-// 类型定义
-export interface Points {
-  user_id: number;
-  coins: number;
-  diamonds: number;
-  energy: number;
-  level: number;
-  streak_days: number;
-  last_streak_date: Date; // 最后一次连胜日期
-  consecutive_missed_days: number; // 连续冻结日数
-  updated_at: Date;
-}
+const sqlite3 = require('sqlite3').verbose();
+const { open } = require('sqlite');
 
-export interface Task {
-  id: number;
-  title: string;
-  description: string;
-  reward_type: 'coin' | 'diamond';
-  reward_amount: number;
-  is_daily: boolean;
-  recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
-  expiry_time: Date | null;
-  target_user_id: number | null;
-  created_at: Date;
-}
-
-export interface UserTask {
-  id: number;
-  user_id: number;
-  task_id: number;
-  status: 'pending' | 'completed' | 'missed';
-  completed_at: Date | null;
-  assigned_date: Date;
-  needs_approval: boolean;
-  approval_status: 'pending' | 'approved' | 'rejected';
-}
-
-export interface Reward {
-  id: number;
-  name: string;
-  description: string;
-  cost_type: 'coin' | 'diamond';
-  cost_amount: number;
-  icon: string;
-  is_active: boolean;
-  created_at: Date;
-  is_special_product?: boolean;
-  reward_multiplier?: number;
-  reward_point_type?: string;
-  is_hidden?: boolean;
-  min_level?: number;
-}
-
-export interface Redemption {
-  id: number;
-  user_id: number;
-  reward_id: number;
-  redeemed_at: Date;
-  status: 'pending' | 'approved' | 'rejected';
-}
-
-// 数据库文件路径
-// 优先从环境变量读取，如果不存在则使用默认路径
+// 数据库路径 - 从环境变量获取或使用默认路径
 const DB_PATH = process.env.DB_PATH || './db/database.db';
 
-// 初始化数据库连接和表结构
-export async function initDatabase() {
-  const db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database
-  });
-  await createTables(db);
-  await initializeData(db);
-  await initializeSystemSettings(db);
-  return db;
-}
-
-// 创建数据库表结构
-async function createTables(database?: any) {
-  if (!database) {
-    database = await initDatabase();
-  }
-  
+// 创建表结构的函数
+async function createTables(database) {
   // 创建用户表
   await database.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -216,46 +132,55 @@ async function createTables(database?: any) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  
+  // 创建系统设置表
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      value TEXT NOT NULL,
+      description TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 // 初始化默认数据
-async function initializeData(database?: any) {
-  if (!database) {
-    database = await initDatabase();
-  }
-  
+async function initializeDefaultData(database) {
   // 检查是否已有用户数据
   const usersCount = await database.get('SELECT COUNT(*) as count FROM users');
   
-  if ((usersCount as any).count === 0) {
-    // 创建默认用户 (注意：实际应用中应使用安全的密码哈希)
+  if (usersCount.count === 0) {
+    console.log('初始化默认用户数据...');
+    
+    // 创建默认用户
     const adminId = await database.run(
       'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      ['admin', 'admin123', 'parent'] // 简化示例，实际应用中应使用 bcrypt 等哈希算法
+      ['admin', 'admin123', 'parent'] // 简化示例
     );
     
     const childId = await database.run(
       'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      ['xiaoming', '123456', 'child'] // 简化示例，实际应用中应使用 bcrypt 等哈希算法
+      ['xiaoming', '123456', 'child'] // 简化示例
     );
     
-    // 添加新的测试用户
+    // 添加测试用户
     const testChildId = await database.run(
       'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      ['testuser', 'test123', 'child'] // 新测试账号
+      ['testuser', 'test123', 'child'] // 测试账号
     );
     
     // 初始化积分数据
     const today = new Date().toISOString();
     await database.run(
       'INSERT INTO points (user_id, coins, diamonds, energy, level, streak_days, last_streak_date, consecutive_missed_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [(childId as any).lastID, 1000, 50, 0, 5, 3, today, 0]
+      [childId.lastID, 1000, 50, 0, 5, 3, today, 0]
     );
     
-    // 为新测试用户初始化积分数据
+    // 为测试用户初始化积分数据
     await database.run(
       'INSERT INTO points (user_id, coins, diamonds, energy, level, streak_days, last_streak_date, consecutive_missed_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [(testChildId as any).lastID, 800, 30, 0, 3, 1, today, 0]
+      [testChildId.lastID, 800, 30, 0, 3, 1, today, 0]
     );
     
     // 创建示例任务
@@ -283,10 +208,10 @@ async function initializeData(database?: any) {
     const taskRows = await database.all('SELECT id FROM tasks');
     const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期（YYYY-MM-DD）
     
-    for (const task of taskRows as any[]) {
+    for (const task of taskRows) {
       await database.run(
         'INSERT INTO user_tasks (user_id, task_id, status, assigned_date) VALUES (?, ?, ?, ?)',
-        [(childId as any).lastID, task.id, 'pending', todayDate]
+        [childId.lastID, task.id, 'pending', todayDate]
       );
     }
     
@@ -305,42 +230,24 @@ async function initializeData(database?: any) {
       );
     }
   }
-}
-
-// 获取数据库实例
-// 初始化系统设置
-async function initializeSystemSettings(database?: any) {
-  if (!database) {
-    database = await initDatabase();
-  }
-  
-  // 创建系统设置表
-  await database.run(`
-    CREATE TABLE IF NOT EXISTS system_settings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      key TEXT NOT NULL UNIQUE,
-      value TEXT NOT NULL,
-      description TEXT,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
   
   // 检查是否已有系统设置数据
   const settingsCount = await database.get('SELECT COUNT(*) as count FROM system_settings');
   
-  if ((settingsCount as any).count === 0) {
+  if (settingsCount.count === 0) {
+    console.log('初始化默认系统设置...');
     // 初始化默认系统设置
-      const defaultSettings = [
-        ['daily_reward_enabled', 'true', '是否启用每日奖励'],
-        ['daily_reward_coins', '50', '每日奖励硬币数量'],
-        ['daily_reward_diamonds', '5', '每日奖励钻石数量'],
-        ['max_streak_bonus_multiplier', '2', '最大连续签到奖励倍数'],
-        ['energy_regen_rate', '5', '能量回复速率(分钟)'],
-        ['max_energy', '100', '最大能量值'],
-        ['streak_reset_days', '3', '连续签到重置天数'],
-        ['multiplier_effect_duration_hours', '6', '积分翻倍效果持续时间(小时)'],
-        ['multiplier_effect_duration_minutes', '0', '积分翻倍效果持续时间(分钟)']
-      ];
+    const defaultSettings = [
+      ['daily_reward_enabled', 'true', '是否启用每日奖励'],
+      ['daily_reward_coins', '50', '每日奖励硬币数量'],
+      ['daily_reward_diamonds', '5', '每日奖励钻石数量'],
+      ['max_streak_bonus_multiplier', '2', '最大连续签到奖励倍数'],
+      ['energy_regen_rate', '5', '能量回复速率(分钟)'],
+      ['max_energy', '100', '最大能量值'],
+      ['streak_reset_days', '3', '连续签到重置天数'],
+      ['multiplier_effect_duration_hours', '6', '积分翻倍效果持续时间(小时)'],
+      ['multiplier_effect_duration_minutes', '0', '积分翻倍效果持续时间(分钟)']
+    ];
     
     for (const setting of defaultSettings) {
       await database.run(
@@ -351,15 +258,36 @@ async function initializeSystemSettings(database?: any) {
   }
 }
 
-// 获取数据库实例 - 每次返回新的连接并确保表结构已初始化
-export async function getDatabase() {
-  const db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database
-  });
+// 执行初始化
+async function initDatabase() {
+  console.log(`正在初始化数据库: ${DB_PATH}`);
   
-  // 确保表结构已创建
-  await createTables(db);
-  
-  return db;
+  try {
+    // 打开数据库连接
+    const db = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database
+    });
+    
+    // 创建表结构
+    await createTables(db);
+    
+    // 初始化默认数据
+    await initializeDefaultData(db);
+    
+    // 关闭数据库连接
+    await db.close();
+    
+    console.log('数据库初始化完成！');
+  } catch (error) {
+    console.error('数据库初始化失败:', error);
+    process.exit(1);
+  }
 }
+
+// 如果直接运行此脚本，则执行初始化
+if (require.main === module) {
+  initDatabase();
+}
+
+module.exports = { initDatabase, createTables };

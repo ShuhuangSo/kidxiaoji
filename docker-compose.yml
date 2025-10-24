@@ -15,6 +15,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    command: sh -c "node src/lib/init-database.js && npm start"
 
   nginx:
     image: nginx:alpine
