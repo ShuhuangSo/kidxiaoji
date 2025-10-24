@@ -1,64 +1,33 @@
+version: '3.8'
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      # 设置构建参数
-      args:
-        - NODE_ENV=production
+    build: .
     environment:
       - NODE_ENV=production
       - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
-      # 增加内存限制环境变量
-      - NODE_OPTIONS="--max-old-space-size=4096"
     volumes:
-      - ./db:/app/db:rw
-      - ./public/avatars:/app/public/avatars:ro
+      - ./db:/app/db
+      - ./public/avatars:/app/public/avatars
     restart: unless-stopped
     healthcheck:
-      # 使用更宽松的健康检查，避免启动失败
-      test: ["CMD", "sh", "-c", "sleep 5 && (curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/_next/static/ || echo '503') | grep -q '^200'"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 120s
-    # 限制资源使用
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
+      retries: 3
     entrypoint:
       - sh
       - -c
       - |
-        echo "开始启动应用服务..."
-        # 创建必要的目录
-        mkdir -p /app/db /app/public/avatars
-        
         # 检查数据库文件是否存在，不存在则初始化
         if [ ! -f "/app/db/database.db" ]; then
           echo "初始化数据库..."
-          # 确保SQL文件存在
-          if [ -f "/app/db/init-database.sql" ]; then
-            sqlite3 /app/db/database.db < /app/db/init-database.sql
-            echo "数据库初始化完成"
-          else
-            echo "警告: 数据库初始化脚本不存在，跳过初始化"
-          fi
+          sqlite3 /app/db/database.db < /app/db/init-database.sql
+          echo "数据库初始化完成"
         else
           echo "数据库文件已存在，跳过初始化"
         fi
-        
-        # 输出环境信息
-        echo "NODE_ENV: ${NODE_ENV}"
-        echo "数据库路径: /app/db/database.db"
-        
         # 启动应用
-        echo "启动Next.js应用..."
         npm start
 
   nginx:
@@ -67,10 +36,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d
       - ./public/avatars:/usr/share/nginx/html/avatars:ro
     depends_on:
-      # 简化依赖关系，避免健康检查条件导致启动失败
       - app
     restart: unless-stopped
     healthcheck:
@@ -78,11 +46,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M

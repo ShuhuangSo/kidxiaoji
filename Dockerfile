@@ -1,31 +1,20 @@
 # 构建阶段
 FROM node:20-alpine AS builder
 
-# 增加内存限制，避免构建时OOM
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-
 # 设置工作目录
 WORKDIR /app
 
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 优化npm配置
-RUN npm config set progress=true && \
-    npm config set loglevel=http && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000
-
-# 安装依赖（使用--legacy-peer-deps避免peer dependency冲突）
-RUN echo "开始安装依赖..." && \
-    npm install --legacy-peer-deps --ignore-scripts
+# 安装依赖
+RUN npm install
 
 # 复制源代码
 COPY . .
 
 # 构建应用
-RUN echo "开始构建应用..." && \
-    npm run build
+RUN npm run build
 
 # 生产阶段
 FROM node:20-alpine
