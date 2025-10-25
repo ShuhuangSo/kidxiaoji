@@ -31,8 +31,9 @@ COPY --from=builder /app/package.json ./
 # 创建数据库目录并设置权限
 RUN mkdir -p /app/db /app/database_data && chown -R node:node /app/db /app/database_data
 
-# 切换到非root用户
-USER node
+# 注意：不在这里切换用户，而是在entrypoint脚本中处理
+# 这样可以确保以root权限执行初始化步骤，正确设置数据库文件权限
+# USER node
 
 # 暴露应用端口
 EXPOSE 3000
