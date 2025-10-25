@@ -74,7 +74,7 @@ export interface Redemption {
 }
 
 // 数据库文件路径
-const DB_PATH = './db/database.db';
+const DB_PATH = './database.db';
 const INIT_SQL_PATH = process.env.DATABASE_INIT_SCRIPT || join(__dirname, '../../db/init-database.sql');
 
 // 初始化数据库连接和表结构

@@ -98,38 +98,12 @@ cd kid-growth
 
 ### 4.3 数据库同步和持久化
 
-### 数据持久化配置
-
-Docker Compose配置会自动挂载数据库目录，确保数据持久化：
-
-```yaml
-volumes:
-  - ./db:/app/db
-```
-
-数据库初始化脚本位于`./db/init-database.sql`，启动时会自动执行。
-
-### 数据库路径配置
-
-**重要配置说明**：
-
-应用代码中的数据库文件路径已配置为`./db/database.db`，与Docker挂载路径保持一致。这确保了：
-
-1. 应用在容器内使用`/app/db/database.db`文件
-2. 数据文件正确映射到宿主机的`./db/database.db`
-3. 本地和服务器环境使用相同的数据库文件路径
-
 项目支持完整的数据库同步和持久化机制：
 
 1. **数据库结构同步**：`db/init-database.sql` 包含完整的数据库表结构，会被提交到GitHub进行版本控制
 2. **数据库文件持久化**：通过Docker卷映射将`./db`目录挂载到容器中，确保数据持久化
 3. **自动初始化**：容器启动时会自动检查数据库文件，如果不存在则使用SQL脚本初始化
 4. **数据一致性**：服务器通过git同步代码后，数据库结构将保持一致，实际数据通过卷映射持久化保存
-
-### 数据一致性保障
-- 数据库文件通过卷挂载保持持久化
-- 代码与容器配置使用一致的路径设置
-- 避免出现本地和服务器数据不一致的问题
 
 ### 4.4 Nginx配置说明
 
@@ -184,19 +158,21 @@ docker-compose ps
 
 ```yaml
 volumes:
+  - ./database.db:/app/database.db
   - ./db:/app/db
+  - ./public/avatars:/app/public/avatars
 ```
 
 ### 5.1 数据库文件备份
 
-要备份数据库文件，只需备份宿主机上的 `db` 目录：
+要备份数据库文件，只需备份宿主机上的 `database.db` 文件：
 
 ```bash
 # 创建备份目录
 mkdir -p ~/backups
 
 # 备份数据库文件
-tar -czvf ~/backups/db_backup_$(date +%Y%m%d_%H%M%S).tar.gz ./db/
+tar -czvf ~/backups/db_backup_$(date +%Y%m%d_%H%M%S).tar.gz ./database.db
 ```
 
 ## 6. 环境变量配置
@@ -213,7 +189,7 @@ nano .env
 
 ```
 # 数据库路径
-DATABASE_URL="./db/database.db"
+DATABASE_URL="./database.db"
 
 # 会话密钥（用于安全性）
 SECRET_KEY="your-secret-key-here-change-in-production"
@@ -228,7 +204,7 @@ SECRET_KEY="your-secret-key-here-change-in-production"
 ```yaml
 environment:
   - NODE_ENV=production
-  - DATABASE_URL=./db/database.db
+  - DATABASE_URL=./database.db
   - SECRET_KEY=your-secret-key-here-change-in-production
 ```
 
@@ -237,7 +213,7 @@ environment:
 ```yaml
 environment:
   - NODE_ENV=production
-  - DATABASE_URL=${DATABASE_URL:-./db/database.db}
+  - DATABASE_URL=${DATABASE_URL:-./database.db}
   - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
 ```
 
@@ -362,7 +338,7 @@ mkdir -p $BACKUP_DIR
 docker-compose -f $PROJECT_DIR/docker-compose.yml down
 
 # 备份数据库文件
-tar -czvf $BACKUP_FILE -C $PROJECT_DIR db/
+tar -czvf $BACKUP_FILE -C $PROJECT_DIR database.db
 
 # 重启服务
 docker-compose -f $PROJECT_DIR/docker-compose.yml up -d

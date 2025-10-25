@@ -7,6 +7,7 @@ services:
       - NODE_ENV=production
       - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
     volumes:
+      - ./database.db:/app/database.db
       - ./db:/app/db
       - ./public/avatars:/app/public/avatars
     restart: unless-stopped
@@ -20,9 +21,9 @@ services:
       - -c
       - |
         # 检查数据库文件是否存在，不存在则初始化
-        if [ ! -f "/app/db/database.db" ]; then
+        if [ ! -f "/app/database.db" ]; then
           echo "初始化数据库..."
-          sqlite3 /app/db/database.db < /app/db/init-database.sql
+          sqlite3 /app/database.db < /app/db/init-database.sql
           echo "数据库初始化完成"
         else
           echo "数据库文件已存在，跳过初始化"
