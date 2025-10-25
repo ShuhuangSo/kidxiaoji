@@ -388,9 +388,63 @@ async function initializeSystemSettings(database?: any) {
 
 // 获取数据库实例 - 每次返回新的连接
 export async function getDatabase() {
-  const db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database
-  });
-  return db;
+  console.log(`尝试连接数据库文件: ${DB_PATH}`);
+  
+  // 在生产环境中添加权限检查日志
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const fs = require('fs');
+      // 检查目录是否存在且可访问
+      const dbDir = DB_PATH.substring(0, DB_PATH.lastIndexOf('/'));
+      if (!fs.existsSync(dbDir)) {
+        console.warn(`数据库目录不存在，尝试创建: ${dbDir}`);
+        try {
+          fs.mkdirSync(dbDir, { recursive: true });
+          console.log(`数据库目录创建成功: ${dbDir}`);
+        } catch (mkdirError) {
+          console.error(`创建数据库目录失败: ${(mkdirError as Error).message}`);
+        }
+      }
+      
+      // 检查文件是否存在并尝试创建
+      if (!fs.existsSync(DB_PATH)) {
+        console.warn(`数据库文件不存在，将尝试创建: ${DB_PATH}`);
+        try {
+          // 创建空文件
+          fs.writeFileSync(DB_PATH, '');
+          console.log(`数据库文件创建成功: ${DB_PATH}`);
+        } catch (touchError) {
+          console.error(`创建数据库文件失败: ${(touchError as Error).message}`);
+        }
+      }
+      
+      const stat = fs.statSync(DB_PATH);
+      console.log(`数据库文件状态: size=${stat.size}, mode=${stat.mode.toString(8)}`);
+    } catch (err: unknown) {
+      console.warn(`数据库文件状态检查失败: ${(err as Error).message}`);
+    }
+  }
+  
+  try {
+    const db = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database
+    });
+    console.log('数据库连接成功');
+    return db;
+  } catch (error: unknown) {
+    console.error(`数据库连接失败: ${(error as Error).message}`);
+    // 如果连接失败，尝试使用内存数据库作为后备选项（仅用于开发环境）
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('尝试使用内存数据库作为后备选项');
+      const memoryDb = await open({
+        filename: ':memory:',
+        driver: sqlite3.Database
+      });
+      // 在内存数据库中创建必要的表
+      await createTables(memoryDb);
+      return memoryDb;
+    }
+    throw error; // 在生产环境中重新抛出错误
+  }
 }
