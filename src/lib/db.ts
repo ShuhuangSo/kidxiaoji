@@ -74,7 +74,7 @@ export interface Redemption {
 }
 
 // 数据库文件路径 - 使用绝对路径避免Docker环境中的相对路径问题
-const DB_PATH = process.env.NODE_ENV === 'production' ? '/app/database.db' : './database.db';
+const DB_PATH = process.env.NODE_ENV === 'production' ? '/app/database_data/database.db' : './database.db';
 const INIT_SQL_PATH = process.env.DATABASE_INIT_SCRIPT || join(__dirname, '../../db/init-database.sql');
 
 // 初始化数据库连接和表结构

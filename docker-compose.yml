@@ -7,7 +7,7 @@ services:
       - NODE_ENV=production
       - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
     volumes:
-      - ./database.db:/app/database.db
+      - ./database_data:/app/database_data
       - ./db:/app/db
       - ./public/avatars:/app/public/avatars
     restart: unless-stopped
@@ -20,20 +20,29 @@ services:
       - sh
       - -c
       - |
+        # 确保数据库目录存在且权限正确
+        echo "检查数据库目录..."
+        mkdir -p /app/database_data
+        chown -R node:node /app/database_data
+        
+        # 数据库文件路径
+        DB_PATH="/app/database_data/database.db"
+        
         # 确保数据库文件权限正确
         echo "检查数据库文件权限..."
-        if [ -f "/app/database.db" ]; then
+        if [ -f "$DB_PATH" ]; then
           echo "数据库文件已存在，检查权限"
         else
           echo "数据库文件不存在，尝试创建并初始化..."
-          # 文件应该已经在Dockerfile中创建，但这里作为后备
-          touch /app/database.db || echo "警告：无法创建数据库文件，可能是权限问题"
+          # 创建数据库文件
+          touch "$DB_PATH" || echo "警告：无法创建数据库文件，可能是权限问题"
+          chown node:node "$DB_PATH"
           # 尝试初始化数据库
-          sqlite3 /app/database.db < /app/db/init-database.sql && echo "数据库初始化完成" || echo "警告：数据库初始化失败"
+          sqlite3 "$DB_PATH" < /app/db/init-database.sql && echo "数据库初始化完成" || echo "警告：数据库初始化失败"
         fi
         
         # 输出文件信息用于调试
-        ls -la /app/database.db || echo "无法访问数据库文件"
+        ls -la "$DB_PATH" || echo "无法访问数据库文件"
         
         # 启动应用
         echo "启动应用..."
