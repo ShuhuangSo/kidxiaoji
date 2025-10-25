@@ -87,8 +87,8 @@ export async function initDatabase() {
       const fs = require('fs');
       const stat = fs.statSync(DB_PATH);
       console.log(`数据库文件状态: size=${stat.size}, mode=${stat.mode.toString(8)}`);
-    } catch (err: Error) {
-      console.warn(`无法获取数据库文件状态: ${err.message}`);
+    } catch (err: unknown) {
+      console.warn(`无法获取数据库文件状态: ${(err as Error).message}`);
     }
   }
   
