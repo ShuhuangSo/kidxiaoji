@@ -28,8 +28,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# 创建数据库目录并设置权限
-RUN mkdir -p /app/db && chown -R node:node /app/db /app
+# 创建数据库目录和空数据库文件，设置正确权限
+RUN mkdir -p /app/db && \
+    touch /app/database.db && \
+    chown -R node:node /app/db /app/database.db
 
 # 切换到非root用户
 USER node

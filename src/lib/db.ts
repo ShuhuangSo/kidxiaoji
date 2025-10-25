@@ -73,12 +73,25 @@ export interface Redemption {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-// 数据库文件路径
-const DB_PATH = './database.db';
+// 数据库文件路径 - 使用绝对路径避免Docker环境中的相对路径问题
+const DB_PATH = process.env.NODE_ENV === 'production' ? '/app/database.db' : './database.db';
 const INIT_SQL_PATH = process.env.DATABASE_INIT_SCRIPT || join(__dirname, '../../db/init-database.sql');
 
 // 初始化数据库连接和表结构
 export async function initDatabase() {
+  console.log(`尝试连接数据库文件: ${DB_PATH}`);
+  
+  // 在生产环境中添加权限检查日志
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const fs = require('fs');
+      const stat = fs.statSync(DB_PATH);
+      console.log(`数据库文件状态: size=${stat.size}, mode=${stat.mode.toString(8)}`);
+    } catch (err: Error) {
+      console.warn(`无法获取数据库文件状态: ${err.message}`);
+    }
+  }
+  
   const db = await open({
     filename: DB_PATH,
     driver: sqlite3.Database
