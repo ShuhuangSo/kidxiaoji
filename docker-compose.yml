@@ -18,6 +18,16 @@ services:
       - sh
       - -c
       - |
+        # 确保数据库文件存在且具有正确权限
+        if [ ! -f "/app/database.db" ]; then
+          echo "数据库文件不存在，创建空数据库文件..."
+          touch /app/database.db
+          chmod 666 /app/database.db
+          echo "空数据库文件创建完成"
+        else
+          echo "设置数据库文件权限..."
+          chmod 666 /app/database.db
+        fi
         # 直接启动应用，使用已有数据库
         echo "使用已有数据库，启动应用..."
         npm start
