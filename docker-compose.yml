@@ -5,10 +5,8 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - DATABASE_INIT_SCRIPT=/app/db/init-database.sql
     volumes:
-      - ./database_data:/app/database_data
-      - ./db:/app/db
+      - ./database.db:/app/database.db
       - ./public/avatars:/app/public/avatars
     restart: unless-stopped
     healthcheck:
@@ -20,51 +18,9 @@ services:
       - sh
       - -c
       - |
-        # 注意：这里保持以root用户执行初始化步骤，最后再切换到node用户启动应用
-        # 这样可以确保在挂载卷上有足够权限创建和设置数据库文件
-        
-        # 确保数据库目录存在且权限正确
-        echo "检查数据库目录..."
-        mkdir -p /app/database_data
-        # 设置宽松的目录权限，确保任何用户都能访问
-        chmod 777 /app/database_data
-        
-        # 数据库文件路径
-        DB_PATH="/app/database_data/database.db"
-        
-        # 确保数据库文件存在并设置正确权限
-        echo "检查数据库文件..."
-        if [ -f "$DB_PATH" ]; then
-          echo "数据库文件已存在，重置权限"
-          # 重置文件权限为777，确保任何用户都能读写
-          chmod 777 "$DB_PATH"
-        else
-          echo "数据库文件不存在，创建并初始化..."
-          # 创建空数据库文件并设置宽松权限
-          touch "$DB_PATH"
-          chmod 777 "$DB_PATH"
-          
-          # 尝试使用sqlite3初始化数据库
-          echo "初始化数据库..."
-          if command -v sqlite3 &> /dev/null; then
-            sqlite3 "$DB_PATH" < /app/db/init-database.sql && echo "数据库初始化成功" || echo "警告：数据库初始化失败，可能需要在应用启动时自动创建表"
-          else
-            echo "警告：未找到sqlite3命令，跳过初始化"
-          fi
-        fi
-        
-        # 输出详细的调试信息
-        echo "数据库目录详情："
-        ls -la /app/database_data/
-        echo "数据库文件详情："
-        ls -la "$DB_PATH" 2>/dev/null || echo "无法访问数据库文件"
-        
-        # 输出当前用户信息
-        echo "当前用户：$(whoami)"
-        
-        # 切换到node用户启动应用
-        echo "切换到node用户启动应用..."
-        su - node -c "npm start"
+        # 直接启动应用，使用已有数据库
+        echo "使用已有数据库，启动应用..."
+        npm start
 
   nginx:
     image: nginx:alpine

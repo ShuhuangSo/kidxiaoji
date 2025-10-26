@@ -96,18 +96,12 @@ cd kid-growth
 4. **.env**（可选）：环境变量配置
 5. **db/init-database.sql**：数据库初始化脚本
 
-### 4.3 数据库同步和持久化
+### 4.3 数据库持久化
 
-项目支持完整的数据库同步和持久化机制：
+项目支持完整的数据库持久化机制：
 
-1. **数据库结构同步**：`db/init-database.sql` 包含完整的数据库表结构，会被提交到GitHub进行版本控制
-2. **数据库文件持久化**：通过Docker卷映射将相关目录挂载到容器中，确保数据持久化
-3. **自动初始化**：容器启动时会自动检查数据库文件，如果不存在则使用SQL脚本初始化
-4. **数据一致性**：服务器通过git同步代码后，数据库结构将保持一致，实际数据通过卷映射持久化保存
-5. **数据库配置**：
-   - 数据库路径配置：应用在生产环境中使用`/app/database_data/database.db`作为数据库文件路径，通过卷挂载`./database_data:/app/database_data`确保数据持久化
-   - 权限设置：Dockerfile中已配置了适当的权限设置，将/app/db和/app/database_data目录的所有权设置给node用户，确保应用能够正常访问和写入数据库文件
-   - 数据库初始化：docker-compose.yml中的entrypoint脚本会自动检查数据库文件是否存在，不存在时会创建并初始化数据库
+1. **数据库文件持久化**：通过Docker卷映射将`./database.db`文件挂载到容器中，确保SQLite数据持久化
+2. **数据一致性**：实际数据通过文件卷映射持久化保存
 
 ### 4.4 Nginx配置说明
 
@@ -158,12 +152,11 @@ docker-compose ps
 
 ## 5. 数据持久化
 
-当前的 `docker-compose.yml` 配置中，我们使用卷挂载将数据库文件保存在宿主机上，确保容器重启后数据不会丢失：
+当前的 `docker-compose.yml` 配置中，我们使用卷挂载将SQLite数据库文件保存在宿主机上，确保容器重启后数据不会丢失：
 
 ```yaml
 volumes:
   - ./database.db:/app/database.db
-  - ./db:/app/db
   - ./public/avatars:/app/public/avatars
 ```
 
