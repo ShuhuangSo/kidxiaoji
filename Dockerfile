@@ -1,44 +1,40 @@
-# 构建阶段
-FROM node:20-alpine AS builder
+# 使用完整的Node.js镜像以避免构建问题
+FROM node:20
 
 # 设置工作目录
 WORKDIR /app
+
+# 安装依赖和构建工具
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置Python路径
+RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖
-RUN npm install
+# 设置环境变量
+ENV PYTHON=/usr/bin/python3
+ENV NODE_ENV=production
 
-# 复制源代码
+# 安装依赖（使用--no-optional可能会跳过一些有问题的可选依赖）
+RUN npm install --production --legacy-peer-deps --no-audit --no-fund --no-optional
+
+# 复制源代码和公共文件
 COPY . .
+
+# 创建数据库目录并设置权限
+RUN mkdir -p /app/db && chmod -R 755 /app/db
 
 # 构建应用
 RUN npm run build
 
-# 生产阶段
-FROM node:20-alpine
-
-# 设置工作目录
-WORKDIR /app
-
-# 复制构建产物
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-
-# 创建数据库目录并设置权限
-RUN mkdir -p /app/db && chown -R node:node /app/db
-
-# 切换到非root用户
-USER node
-
 # 暴露应用端口
 EXPOSE 3000
 
-# 设置环境变量
-ENV NODE_ENV=production
-
-# 启动应用
+# 启动命令
 CMD ["npm", "start"]
