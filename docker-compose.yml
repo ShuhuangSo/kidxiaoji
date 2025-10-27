@@ -27,22 +27,35 @@ services:
           exit 1
         fi
         
+        # 显示当前目录和文件权限信息用于调试
+        echo "当前工作目录：$(pwd)"
+        echo "app目录权限："
+        ls -la /app
+        
         # 确保数据库文件存在且具有正确权限（使用root权限执行）
         if [ ! -f "/app/database.db" ]; then
           echo "数据库文件不存在，创建空数据库文件..."
           # 使用临时文件避免权限问题
           echo "" > /tmp/empty.db
           cp /tmp/empty.db /app/database.db
-          # 尝试设置权限，但不依赖于chmod成功
-          chmod 666 /app/database.db || echo "警告：无法设置数据库文件权限"
+          # 设置777权限确保所有用户都能访问
+          chmod 777 /app/database.db
+          echo "数据库文件权限："
+          ls -la /app/database.db
           echo "空数据库文件创建完成"
         else
           echo "设置数据库文件权限..."
-          chmod 666 /app/database.db || echo "警告：无法设置数据库文件权限"
+          # 设置777权限确保所有用户都能访问
+          chmod 777 /app/database.db
+          echo "数据库文件权限："
+          ls -la /app/database.db
         fi
         
         # 确保构建产物目录权限正确
-        chmod -R 755 /app/.next || echo "警告：无法设置构建产物权限"
+        chmod -R 755 /app/.next
+        
+        # 添加环境变量以帮助调试数据库连接
+        export DEBUG_DATABASE=true
         
         # 直接启动应用
         echo "启动应用..."
