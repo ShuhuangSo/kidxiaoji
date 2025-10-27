@@ -7,14 +7,14 @@ WORKDIR /app
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖，增加内存限制和优化参数
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm install --legacy-peer-deps --no-audit
+# 安装依赖，优化内存使用和参数
+RUN NODE_OPTIONS="--max-old-space-size=768" npm install --legacy-peer-deps --no-audit --no-fund
 
 # 复制源代码
 COPY . .
 
-# 构建应用，增加内存限制
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
+# 构建应用，优化内存使用
+RUN NODE_OPTIONS="--max-old-space-size=768" npm run build
 
 # 生产阶段
 FROM node:20-alpine

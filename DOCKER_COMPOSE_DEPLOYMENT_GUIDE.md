@@ -105,12 +105,12 @@ cd kid-growth
 
 ### 4.4 Node.js内存优化
 
-为解决构建过程中可能出现的内存溢出问题，Dockerfile中已配置了以下优化：
+为解决构建过程中可能出现的内存溢出问题，特别是在1GB内存的服务器环境中，Dockerfile中已配置了以下优化：
 
-1. **增加内存限制**：设置`NODE_OPTIONS="--max-old-space-size=4096"`，为Node.js进程分配4GB内存
-2. **依赖安装优化**：使用`--legacy-peer-deps`和`--no-audit`参数加速依赖安装
+1. **优化内存限制**：设置`NODE_OPTIONS="--max-old-space-size=768"`，为Node.js进程分配768MB内存，适合1GB内存的服务器环境
+2. **依赖安装优化**：使用`--legacy-peer-deps`、`--no-audit`和`--no-fund`参数进一步减少内存使用和加速依赖安装
 
-这些配置确保了在资源有限的服务器环境中也能顺利完成构建过程。
+这些配置确保了在内存有限的服务器环境中也能顺利完成构建过程。
 
 ### 4.5 Nginx配置说明
 
