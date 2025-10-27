@@ -7,14 +7,14 @@ WORKDIR /app
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖，优化内存使用和参数
-RUN NODE_OPTIONS="--max-old-space-size=768" npm install --legacy-peer-deps --no-audit --no-fund
+# 安装依赖
+RUN npm install
 
 # 复制源代码
 COPY . .
 
-# 构建应用，优化内存使用
-RUN NODE_OPTIONS="--max-old-space-size=768" npm run build
+# 构建应用
+RUN npm run build
 
 # 生产阶段
 FROM node:20-alpine
@@ -28,11 +28,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# 确保构建产物和目录具有正确权限
-RUN chown -R node:node /app && chmod -R 755 /app/.next
+# 创建数据库目录并设置权限
+RUN mkdir -p /app/db && chown -R node:node /app/db
 
-# 暂时保持为root用户运行，以便entrypoint可以处理权限问题
-# 注意：生产环境中应考虑更安全的权限模型
+# 切换到非root用户
+USER node
 
 # 暴露应用端口
 EXPOSE 3000

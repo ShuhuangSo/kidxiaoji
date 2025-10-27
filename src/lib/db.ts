@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import { readFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 
 // 类型定义
 export interface User {
@@ -73,12 +73,9 @@ export interface Redemption {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-// 数据库文件路径 - 使用绝对路径确保在Docker容器中正确访问
-const DB_PATH = resolve(process.cwd(), './database.db');
+// 数据库文件路径
+const DB_PATH = './database.db';
 const INIT_SQL_PATH = process.env.DATABASE_INIT_SCRIPT || join(__dirname, '../../db/init-database.sql');
-
-// 记录数据库路径用于调试
-console.log(`数据库文件路径: ${DB_PATH}`);
 
 // 初始化数据库连接和表结构
 export async function initDatabase() {

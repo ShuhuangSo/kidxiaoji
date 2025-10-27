@@ -96,35 +96,24 @@ cd kid-growth
 4. **.env**（可选）：环境变量配置
 5. **db/init-database.sql**：数据库初始化脚本
 
-### 4.3 数据持久化和权限
+### 4.3 数据库同步和持久化
 
-项目支持完整的数据库持久化机制和权限管理：
+项目支持完整的数据库同步和持久化机制：
 
-1. **数据库文件持久化**：通过Docker卷映射将`./database.db`文件挂载到容器中，确保SQLite数据持久化
-2. **权限管理**：容器启动时会自动检查数据库文件是否存在，如果不存在则创建，并设置777权限确保应用能正确读写
-3. **路径优化**：数据库连接已使用绝对路径配置，确保在Docker容器环境中能正确访问数据库文件
-4. **调试信息**：容器启动时会输出路径和权限信息，便于排查问题
+1. **数据库结构同步**：`db/init-database.sql` 包含完整的数据库表结构，会被提交到GitHub进行版本控制
+2. **数据库文件持久化**：通过Docker卷映射将`./db`目录挂载到容器中，确保数据持久化
+3. **自动初始化**：容器启动时会自动检查数据库文件，如果不存在则使用SQL脚本初始化
+4. **数据一致性**：服务器通过git同步代码后，数据库结构将保持一致，实际数据通过卷映射持久化保存
 
-数据持久化配置示例：
-
-### 4.4 Node.js内存优化
-
-为解决构建过程中可能出现的内存溢出问题，特别是在1GB内存的服务器环境中，Dockerfile中已配置了以下优化：
-
-1. **优化内存限制**：设置`NODE_OPTIONS="--max-old-space-size=768"`，为Node.js进程分配768MB内存，适合1GB内存的服务器环境
-2. **依赖安装优化**：使用`--legacy-peer-deps`、`--no-audit`和`--no-fund`参数进一步减少内存使用和加速依赖安装
-
-这些配置确保了在内存有限的服务器环境中也能顺利完成构建过程。
-
-### 4.5 Nginx配置说明
+### 4.4 Nginx配置说明
 
 Nginx服务已配置为：
 - 监听80（HTTP）和443（HTTPS）端口
 - 反向代理请求到Next.js应用
-- 直接提供静态资源（如头像）以提高性 能
+- 直接提供静态资源（如头像）以提高性能
 - 配置合理的缓存策略
 
-### 4.6 服务器自动部署流程
+### 4.5 服务器自动部署流程
 
 项目提供了一键部署脚本，简化了部署流程：
 
@@ -150,14 +139,14 @@ docker-compose up -d --build
 - **主站点**：http://服务器IP地址
 - 所有数据和配置都会自动处理，无需额外操作
 
-### 4.7 构建和启动服务
+### 4.6 构建和启动服务
 
 ```bash
 # 在项目根目录执行
 docker-compose up -d --build
 ```
 
-### 4.8 验证服务状态
+### 4.4 验证服务状态
 
 ```bash
 docker-compose ps
@@ -165,26 +154,23 @@ docker-compose ps
 
 ## 5. 数据持久化
 
-当前的 `docker-compose.yml` 配置中，我们使用卷挂载将SQLite数据库文件保存在宿主机上，确保容器重启后数据不会丢失：
+当前的 `docker-compose.yml` 配置中，我们使用卷挂载将数据库文件保存在宿主机上，确保容器重启后数据不会丢失：
 
 ```yaml
 volumes:
-  - ./database.db:/app/database.db
-  - ./public/avatars:/app/public/avatars
+  - ./db:/app/db
 ```
-
-容器启动时会自动检查数据库文件权限并设置正确的访问权限，确保应用能正常读写数据库。
 
 ### 5.1 数据库文件备份
 
-要备份数据库文件，只需备份宿主机上的 `database.db` 文件：
+要备份数据库文件，只需备份宿主机上的 `db` 目录：
 
 ```bash
 # 创建备份目录
 mkdir -p ~/backups
 
 # 备份数据库文件
-tar -czvf ~/backups/db_backup_$(date +%Y%m%d_%H%M%S).tar.gz ./database.db
+tar -czvf ~/backups/db_backup_$(date +%Y%m%d_%H%M%S).tar.gz ./db/
 ```
 
 ## 6. 环境变量配置
@@ -201,7 +187,7 @@ nano .env
 
 ```
 # 数据库路径
-DATABASE_URL="./database.db"
+DATABASE_URL="./db/database.db"
 
 # 会话密钥（用于安全性）
 SECRET_KEY="your-secret-key-here-change-in-production"
@@ -216,7 +202,7 @@ SECRET_KEY="your-secret-key-here-change-in-production"
 ```yaml
 environment:
   - NODE_ENV=production
-  - DATABASE_URL=./database.db
+  - DATABASE_URL=./db/database.db
   - SECRET_KEY=your-secret-key-here-change-in-production
 ```
 
@@ -225,7 +211,7 @@ environment:
 ```yaml
 environment:
   - NODE_ENV=production
-  - DATABASE_URL=${DATABASE_URL:-./database.db}
+  - DATABASE_URL=${DATABASE_URL:-./db/database.db}
   - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
 ```
 
@@ -350,7 +336,7 @@ mkdir -p $BACKUP_DIR
 docker-compose -f $PROJECT_DIR/docker-compose.yml down
 
 # 备份数据库文件
-tar -czvf $BACKUP_FILE -C $PROJECT_DIR database.db
+tar -czvf $BACKUP_FILE -C $PROJECT_DIR db/
 
 # 重启服务
 docker-compose -f $PROJECT_DIR/docker-compose.yml up -d
