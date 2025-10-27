@@ -28,11 +28,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# 确保app目录具有正确权限
-RUN chown -R node:node /app
+# 确保构建产物和目录具有正确权限
+RUN chown -R node:node /app && chmod -R 755 /app/.next
 
-# 切换到非root用户
-USER node
+# 暂时保持为root用户运行，以便entrypoint可以处理权限问题
+# 注意：生产环境中应考虑更安全的权限模型
 
 # 暴露应用端口
 EXPOSE 3000
